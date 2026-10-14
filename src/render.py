@@ -1,4 +1,6 @@
-"""お店の写真に見出しの帯を重ねて、Instagram向けの縦長画像(1080x1350)を作る。"""
+"""お店の写真に見出しの帯を重ねて、Instagram向けの縦長画像(1080x1350)を作る。
+文字の折り返し処理（_wrap）はリール動画・画像カードでも共通で使う。
+"""
 import pathlib
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
@@ -21,20 +23,36 @@ def _font(size):
 NO_START = set("、。，．・：；？！ー」』）】〉》ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ%％")
 
 
-def _wrap(draw, text, font, max_w):
-    """日本語は単語区切りがないので1文字ずつ詰めて折り返す（句読点などは行頭に来ないようにする）。"""
-    lines, cur = [], ""
+def _tokens(text):
+    """英単語・数字のかたまりは途中で切らないよう、ひとまとまりにする。"""
+    out, buf = [], ""
     for ch in text:
-        if ch == "\n":
+        if ch.isascii() and (ch.isalnum() or ch in "-_.%&'"):
+            buf += ch
+        else:
+            if buf:
+                out.append(buf)
+                buf = ""
+            out.append(ch)
+    if buf:
+        out.append(buf)
+    return out
+
+
+def _wrap(draw, text, font, max_w):
+    """日本語は1文字ずつ、英単語はまとめて折り返す（句読点などは行頭に来ないようにする）。"""
+    lines, cur = [], ""
+    for tok in _tokens(text):
+        if tok == "\n":
             lines.append(cur)
             cur = ""
             continue
-        trial = cur + ch
-        if draw.textlength(trial, font=font) <= max_w or ch in NO_START:
+        trial = cur + tok
+        if not cur or draw.textlength(trial, font=font) <= max_w or tok in NO_START:
             cur = trial
         else:
-            lines.append(cur)
-            cur = ch
+            lines.append(cur.rstrip())
+            cur = tok.lstrip()
     if cur:
         lines.append(cur)
     return lines
