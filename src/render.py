@@ -18,8 +18,11 @@ def _font(size):
     raise SystemExit("日本語フォントが見つかりません（fonts-noto-cjk をインストールしてください）")
 
 
+NO_START = set("、。，．・：；？！ー」』）】〉》ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ%％")
+
+
 def _wrap(draw, text, font, max_w):
-    """日本語は単語区切りがないので1文字ずつ詰めて折り返す。"""
+    """日本語は単語区切りがないので1文字ずつ詰めて折り返す（句読点などは行頭に来ないようにする）。"""
     lines, cur = [], ""
     for ch in text:
         if ch == "\n":
@@ -27,7 +30,7 @@ def _wrap(draw, text, font, max_w):
             cur = ""
             continue
         trial = cur + ch
-        if draw.textlength(trial, font=font) <= max_w:
+        if draw.textlength(trial, font=font) <= max_w or ch in NO_START:
             cur = trial
         else:
             lines.append(cur)
@@ -52,6 +55,16 @@ def render(photo_path, headline, sub, out_path, accent="#1F3A5F", text_color="#F
         if len(lines) <= 3 or size <= 48:
             break
         size -= 6
+    # 最後の行が1〜2文字だけにならないよう、行の長さをそろえる
+    if len(lines) > 1 and "\n" not in headline:
+        target = draw.textlength(headline, font=font) / len(lines)
+        width = target
+        while width <= W - pad * 2:
+            balanced = _wrap(draw, headline, font, width)
+            if len(balanced) == len(lines):
+                lines = balanced
+                break
+            width += 8
     sub_font = _font(36)
     sub_lines = _wrap(draw, sub, sub_font, W - pad * 2)[:2] if sub else []
 
