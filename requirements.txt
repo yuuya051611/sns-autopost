@@ -1,0 +1,4 @@
+anthropic>=0.40
+pillow>=10
+pyyaml>=6
+requests>=2.31
