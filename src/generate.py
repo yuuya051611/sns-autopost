@@ -1,22 +1,17 @@
-"""毎週1回動く：来週月〜日の7投稿を作って queue/ に置く。
+"""毎週1回動く：来週月〜日の7投稿（リール動画と画像）を作って queue/ に置く。
 
-写真を実際にAIに見せて、その写真に合った文章を書かせる。
-写真は「使った回数が少ない順」に選ぶので、同じ写真ばかりにならない。
+並びは config.yaml の schedule で決める（reel=リール、image=画像）。
+写真は不要。会社資料と同じ色のデザインで、文字中心の動画と画像を作る。
 """
-import base64
 import datetime as dt
-import io
 import json
 import re
 import sys
 
 import anthropic
-from PIL import Image, ImageOps
 
-from common import QUEUE, WEEKDAYS, env, list_photos, load_config, read_json, today_jst, write_json
-from render import render
-
-USAGE_FILE = QUEUE / "photo_usage.json"
+from common import QUEUE, WEEKDAYS, env, load_config, today_jst, write_json
+from reel import make_card, make_reel, reel_cover
 
 
 def next_week_dates(base=None):
@@ -25,78 +20,75 @@ def next_week_dates(base=None):
     return [monday + dt.timedelta(days=i) for i in range(7)]
 
 
-def pick_photos(n):
-    photos = list_photos()
-    if not photos:
-        raise SystemExit("photos/ フォルダに写真がありません。お店の写真を入れてください。")
-    usage = read_json(USAGE_FILE) if USAGE_FILE.exists() else {}
-    ranked = sorted(photos, key=lambda p: (usage.get(p.name, 0), p.name))
-    chosen = [ranked[i % len(ranked)] for i in range(n)]
-    for p in chosen:
-        usage[p.name] = usage.get(p.name, 0) + 1
-    return chosen, usage
+def _lines(items):
+    return "\n".join(f"- {x}" for x in (items or [])) or "- なし"
 
 
-def thumb_b64(path):
-    img = ImageOps.exif_transpose(Image.open(path)).convert("RGB")
-    img.thumbnail((640, 640))
-    buf = io.BytesIO()
-    img.save(buf, "JPEG", quality=80)
-    return base64.b64encode(buf.getvalue()).decode()
+def build_prompt(cfg, dates, kinds):
+    a = cfg["account"]
+    plan = "\n".join(
+        f"{i + 1}本目: {d.month}/{d.day}({WEEKDAYS[d.weekday()]}) {'リール動画' if k == 'reel' else '画像'}"
+        for i, (d, k) in enumerate(zip(dates, kinds)))
+    return f"""あなたはInstagram運用のプロです。次のアカウントの来週7本分の投稿を日本語で作ってください。
 
-
-def build_prompt(cfg, dates):
-    s = cfg["shop"]
-    days = "、".join(f"{i + 1}枚目={d.month}/{d.day}({WEEKDAYS[d.weekday()]})" for i, d in enumerate(dates))
-    return f"""あなたは地域の小さなお店のSNS運用担当です。添付の写真7枚それぞれに1投稿ずつ、InstagramとThreadsに自動投稿する文章を日本語で作ってください。
-
-店名: {s.get('name')}
-業種: {s.get('kind')}
-地域: {s.get('area')}
-来てほしいお客さん: {s.get('target')}
-強み・推したいもの: {s.get('strength')}
-雰囲気: {s.get('tone')}
-定休日: {s.get('closed_days')}
-Webサイト・予約: {s.get('url') or 'なし'}
+アカウント: {a['name']}
+事業内容: {a['business']}
+届けたい相手: {a['audience']}
+投稿のゴール: {a['goal']}
+最後の呼びかけ: {a['cta']}
+雰囲気: {a['tone']}
 今週のお知らせ: {cfg.get('news') or 'なし'}
 
-投稿日: {days}
+使ってよい事実（これ以外の数字・実績は書かない）:
+{_lines(a.get('facts'))}
 
-ルール:
-- 必ず写真に実際に写っているものに沿って書く。写っていないものを写っているかのように書かない
-- 7本はテーマを変える（商品紹介、こだわり・裏側、お客さんの悩みに答える豆知識、人柄、季節や地域の話題、お知らせ など）
-- 価格・効果・実績など、上の情報にない事実は作らない。架空のお客様の声や口コミは書かない
-- 誇大表現、他店との比較、医療・効果の断定はしない
-- 定休日の投稿でも問題ない内容にする（「本日営業中」のような日付依存の表現は避ける）
-- headline: 画像に大きく載せる見出し。全角20字以内
-- sub: 画像に小さく載せる一言。全角25字以内（店名でもよい）
-- caption: Instagram用。改行を使って読みやすく、150〜300字。最後に来店・予約につながる一言
-- hashtags: 地域名・業種を含む5〜8個
-- threads: Threads用の短い文。120字以内、ハッシュタグは1個まで
+絶対に書かないこと:
+{_lines(a.get('never'))}
+
+投稿予定:
+{plan}
+
+作り方:
+- 7本はテーマを変える（相手が抱える悩みへの気づき、すぐできるチェック・豆知識、よくある間違い、運用と登録代行の違い、支援の流れ、無料チェックの案内 など）。売り込みは7本中1〜2本まで
+- 一般論として広く知られている事実以外の統計や％は使わない。数字を出すときは「目安」「例えば」と分かる書き方にする
+- リール動画は scenes に4〜6場面。1場面は全角40字以内で、1場面目は思わず止まって見たくなる問いかけ。最後の場面は呼びかけ
+- 画像は headline（全角22字以内）と points（3つ、各全角30字以内）
+- caption: 改行を使って読みやすく、200〜400字。最後に呼びかけ
+- hashtags: 5〜8個（#MEO対策 #Googleマップ集客 など、店舗オーナーが見るもの）
 
 JSONだけを返してください（説明やコードブロックは不要）:
-{{"posts":[{{"headline":"","sub":"","caption":"","hashtags":["#..."],"threads":""}}]}}
-postsは写真の順番どおり7件。"""
+{{"posts":[{{"type":"reel","headline":"管理用の短いタイトル","scenes":["..."],"points":[],"caption":"","hashtags":["#..."]}},{{"type":"image","headline":"","scenes":[],"points":["","",""],"caption":"","hashtags":["#..."]}}]}}
+postsは投稿予定の順番どおり7件、typeも予定どおりにする。"""
 
 
-def ask_claude(cfg, photos, dates):
+def ask_claude(cfg, dates, kinds):
     client = anthropic.Anthropic(api_key=env("ANTHROPIC_API_KEY"))
-    content = []
-    for p in photos:
-        content.append({"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": thumb_b64(p)}})
-    content.append({"type": "text", "text": build_prompt(cfg, dates)})
     msg = client.messages.create(
         model=cfg.get("model", "claude-sonnet-5-5"),
-        max_tokens=6000,
-        messages=[{"role": "user", "content": content}],
+        max_tokens=8000,
+        messages=[{"role": "user", "content": build_prompt(cfg, dates, kinds)}],
     )
     text = "".join(b.text for b in msg.content if b.type == "text")
     text = re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.M).strip()
-    data = json.loads(text)
-    posts = data["posts"]
-    if len(posts) < len(photos):
+    posts = json.loads(text)["posts"]
+    if len(posts) < len(dates):
         raise SystemExit(f"AIの返答が{len(posts)}件しかありません。もう一度実行してください。")
-    return posts[: len(photos)]
+    return posts[: len(dates)]
+
+
+def build_media(cfg, d, kind, post):
+    design = cfg.get("design", {})
+    colors = tuple(design.get("colors", ["#13B5E0", "#0D3A9E"]))
+    accent = design.get("accent", "#FFB000")
+    brand = cfg["account"].get("brand_line", "")
+    stem = QUEUE / "media" / d.isoformat()
+    if kind == "reel":
+        scenes = [{"text": s, "big": i in (0, len(post["scenes"]) - 1)} for i, s in enumerate(post["scenes"])]
+        video = make_reel(scenes, f"{stem}.mp4", brand=brand, colors=colors, accent=accent)
+        reel_cover(video, f"{stem}_cover.jpg")
+        return {"video": f"queue/media/{d.isoformat()}.mp4", "image": f"queue/media/{d.isoformat()}_cover.jpg"}
+    make_card(post["headline"], post.get("points", []), f"{stem}.jpg", brand=brand, colors=colors, accent=accent)
+    return {"image": f"queue/media/{d.isoformat()}.jpg"}
 
 
 def main():
@@ -105,26 +97,22 @@ def main():
     if all((QUEUE / f"{d.isoformat()}.json").exists() for d in dates):
         print("来週分はもう作成済みです。")
         return
-    photos, usage = pick_photos(len(dates))
-    posts = ask_claude(cfg, photos, dates)
-    design = cfg.get("design", {})
+    kinds = (cfg.get("schedule") or ["image"] * 7)[:7]
+    posts = ask_claude(cfg, dates, kinds)
 
-    for d, photo, post in zip(dates, photos, posts):
-        img_path = QUEUE / "images" / f"{d.isoformat()}.jpg"
-        render(photo, post["headline"], post.get("sub", ""), img_path,
-               accent=design.get("accent", "#1F3A5F"), text_color=design.get("text", "#FFFFFF"))
+    for d, kind, post in zip(dates, kinds, posts):
+        media = build_media(cfg, d, kind, post)
         tags = " ".join(post.get("hashtags", []))
         write_json(QUEUE / f"{d.isoformat()}.json", {
             "date": d.isoformat(),
-            "photo": photo.name,
-            "image": f"queue/images/{d.isoformat()}.jpg",
+            "type": kind,
             "headline": post["headline"],
+            **media,
             "caption": f"{post['caption']}\n\n{tags}".strip(),
-            "threads": post.get("threads") or post["caption"][:450],
+            "threads": post["caption"][:450],
             "posted": {},
         })
-        print(f"{d} を作成: {post['headline']}")
-    write_json(USAGE_FILE, usage)
+        print(f"{d}（{'リール' if kind == 'reel' else '画像'}）: {post['headline']}")
 
 
 if __name__ == "__main__":
