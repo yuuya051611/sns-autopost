@@ -31,30 +31,38 @@ def _check(r, what):
     return r.json()
 
 
-def post_instagram(item, url):
+def post_instagram(item, urls):
     token, uid = env("IG_ACCESS_TOKEN"), env("IG_USER_ID")
-    c = _check(requests.post(f"{IG_API}/{uid}/media", data={
-        "image_url": url, "caption": item["caption"][:2200], "access_token": token}, timeout=60),
-        "Instagram 画像の登録")
+    data = {"caption": item["caption"][:2200], "access_token": token}
+    if item.get("type") == "reel":
+        data.update({"media_type": "REELS", "video_url": urls["video"], "share_to_feed": "true"})
+    else:
+        data["image_url"] = urls["image"]
+    c = _check(requests.post(f"{IG_API}/{uid}/media", data=data, timeout=60), "Instagram 投稿の登録")
     cid = c["id"]
-    for _ in range(20):  # 画像の処理完了を待つ
+    for _ in range(40):  # 動画・画像の処理完了を待つ（最大約6分）
         s = _check(requests.get(f"{IG_API}/{cid}", params={
             "fields": "status_code", "access_token": token}, timeout=30), "Instagram 状態確認")
         if s.get("status_code") == "FINISHED":
             break
         if s.get("status_code") == "ERROR":
-            raise RuntimeError("Instagram側で画像の処理に失敗しました")
-        time.sleep(5)
+            raise RuntimeError("Instagram側で画像・動画の処理に失敗しました")
+        time.sleep(10)
+    else:
+        raise RuntimeError("Instagram側の処理が時間内に終わりませんでした")
     p = _check(requests.post(f"{IG_API}/{uid}/media_publish", data={
         "creation_id": cid, "access_token": token}, timeout=60), "Instagram 公開")
     return p["id"]
 
 
-def post_threads(item, url):
+def post_threads(item, urls):
     token = env("THREADS_ACCESS_TOKEN")
-    c = _check(requests.post(f"{TH_API}/me/threads", data={
-        "media_type": "IMAGE", "image_url": url, "text": item["threads"][:500],
-        "access_token": token}, timeout=60), "Threads 投稿の登録")
+    data = {"text": item["threads"][:500], "access_token": token}
+    if item.get("type") == "reel":
+        data.update({"media_type": "VIDEO", "video_url": urls["video"]})
+    else:
+        data.update({"media_type": "IMAGE", "image_url": urls["image"]})
+    c = _check(requests.post(f"{TH_API}/me/threads", data=data, timeout=60), "Threads 投稿の登録")
     time.sleep(30)  # Threads公式の推奨待ち時間
     p = _check(requests.post(f"{TH_API}/me/threads_publish", data={
         "creation_id": c["id"], "access_token": token}, timeout=60), "Threads 公開")
@@ -69,7 +77,7 @@ def main():
         print(f"{day} の投稿は予定にありません。")
         return 0
     item = read_json(path)
-    url = image_url(item["image"])
+    urls = {k: image_url(item[k]) for k in ("image", "video") if item.get(k)}
     dry = os.environ.get("DRY_RUN") == "1"
     targets = {"instagram": post_instagram, "threads": post_threads}
     failed = []
@@ -81,10 +89,10 @@ def main():
             print(f"{name}: 投稿済みなのでスキップ")
             continue
         if dry:
-            print(f"[DRY_RUN] {name} に投稿予定\n画像: {url}\n{item['caption'] if name == 'instagram' else item['threads']}\n")
+            print(f"[DRY_RUN] {name} に投稿予定（{item.get('type', 'image')}）\n素材: {urls}\n{item['caption'] if name == 'instagram' else item['threads']}\n")
             continue
         try:
-            item["posted"][name] = fn(item, url)
+            item["posted"][name] = fn(item, urls)
             print(f"{name}: 投稿しました")
         except Exception as e:  # 片方が失敗してももう片方は投稿する
             print(f"{name}: {e}")
