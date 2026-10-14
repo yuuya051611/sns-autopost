@@ -1,0 +1,28 @@
+name: 来週分の投稿を作る
+on:
+  schedule:
+    - cron: "0 11 * * 0"   # 毎週日曜 20:00（日本時間）
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: sns-autopost
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk
+      - run: pip install -q -r requirements.txt
+      - run: python src/generate.py
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: 作った投稿を保存
+        run: |
+          git config user.name "sns-autopost"
+          git config user.email "sns-autopost@users.noreply.github.com"
+          git add queue
+          git diff --cached --quiet || git commit -m "来週分の投稿を作成"
+          git push
