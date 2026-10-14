@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  pull-requests: write
 concurrency: sns-autopost
 jobs:
   generate:
@@ -14,15 +15,23 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk ffmpeg
       - run: pip install -q -r requirements.txt
       - run: python src/generate.py
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      - name: 作った投稿を保存
+      - name: 確認待ちを作る
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          if [ -z "$(git status --porcelain queue)" ]; then echo "新しい投稿はありません"; exit 0; fi
+          BR="week-$(TZ=Asia/Tokyo date +%Y%m%d-%H%M)"
           git config user.name "sns-autopost"
           git config user.email "sns-autopost@users.noreply.github.com"
+          git checkout -b "$BR"
           git add queue
-          git diff --cached --quiet || git commit -m "来週分の投稿を作成"
-          git push
+          git commit -m "来週分の投稿（確認待ち）"
+          git push -u origin "$BR"
+          FILES=$(git diff --name-only origin/main -- 'queue/*.json')
+          python src/pr_body.py "$BR" $FILES > /tmp/body.md
+          gh pr create --base main --head "$BR" --title "【確認お願いします】来週の投稿7本" --body-file /tmp/body.md
