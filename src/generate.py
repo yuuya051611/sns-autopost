@@ -1,16 +1,20 @@
-"""毎週1回動く：来週月〜日の7投稿（リール動画と画像）を作って queue/ に置く。
+"""来週月〜日の7投稿（リール動画と画像）を作って queue/ に置く。
 
-並びは config.yaml の schedule で決める（reel=リール、image=画像）。
-写真は不要。会社資料と同じ色のデザインで、文字中心の動画と画像を作る。
+文章の作り方は2通り:
+- 無料: Claudeとのチャットで書いてもらった文章（inbox/posts.json）を使う
+- 有料: ANTHROPIC_API_KEY があれば、毎週自動でAIに書かせる
+
+リールに reel_script があれば、ナレーション付きの解説リール（映像背景）を作る。
 """
 import datetime as dt
 import json
+import os
 import re
 import sys
 
 import anthropic
 
-from common import QUEUE, WEEKDAYS, env, load_config, today_jst, write_json
+from common import QUEUE, ROOT, WEEKDAYS, env, load_config, read_json, today_jst, write_json
 from reel import make_card, make_reel, reel_cover
 
 
@@ -82,6 +86,12 @@ def build_media(cfg, d, kind, post):
     accent = design.get("accent", "#FFB000")
     brand = cfg["account"].get("brand_line", "")
     stem = QUEUE / "media" / d.isoformat()
+    if kind == "reel" and post.get("reel_script"):
+        # ナレーション＋映像背景＋動く画面の「解説リール」
+        from explainer import make_explainer
+        video = make_explainer(post["reel_script"], f"{stem}.mp4", brand=brand)
+        reel_cover(video, f"{stem}_cover.jpg", at=0.8)
+        return {"video": f"queue/media/{d.isoformat()}.mp4", "image": f"queue/media/{d.isoformat()}_cover.jpg"}
     if kind == "reel":
         scenes = [{"text": s, "big": i in (0, len(post["scenes"]) - 1)} for i, s in enumerate(post["scenes"])]
         video = make_reel(scenes, f"{stem}.mp4", brand=brand, colors=colors, accent=accent)
@@ -91,18 +101,34 @@ def build_media(cfg, d, kind, post):
     return {"image": f"queue/media/{d.isoformat()}.jpg"}
 
 
+INBOX = ROOT / "inbox" / "posts.json"
+
+
 def main():
     cfg = load_config()
     dates = next_week_dates()
-    if all((QUEUE / f"{d.isoformat()}.json").exists() for d in dates):
-        print("来週分はもう作成済みです。")
-        return
     kinds = (cfg.get("schedule") or ["image"] * 7)[:7]
-    posts = ask_claude(cfg, dates, kinds)
+    if INBOX.exists():
+        posts = read_json(INBOX)["posts"][: len(dates)]
+        kinds = [p.get("type", k) for p, k in zip(posts, kinds)]
+        INBOX.unlink()
+        print("Claudeが書いた文章（inbox/posts.json）を使います。")
+    elif os.environ.get("ANTHROPIC_API_KEY"):
+        if all((QUEUE / f"{d.isoformat()}.json").exists() for d in dates):
+            print("来週分はもう作成済みです。")
+            return
+        posts = ask_claude(cfg, dates, kinds)
+    else:
+        print("来週分の文章がまだありません。Claudeに「来週分作って」と送ってください。")
+        return
 
     for d, kind, post in zip(dates, kinds, posts):
         media = build_media(cfg, d, kind, post)
         tags = " ".join(post.get("hashtags", []))
+        if post.get("reel_script"):  # VOICEVOXの利用規約で必要なクレジット表記
+            from explainer import VOICE_NAMES
+            v = post["reel_script"].get("voice", 14)
+            tags += f"\n\nVOICEVOX:{VOICE_NAMES.get(v, 'VOICEVOX')}"
         write_json(QUEUE / f"{d.isoformat()}.json", {
             "date": d.isoformat(),
             "type": kind,
