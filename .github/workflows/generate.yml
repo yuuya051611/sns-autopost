@@ -31,12 +31,10 @@ jobs:
           for i in 0 1; do curl -sSL -o vvms/$i.vvm $R/VOICEVOX/voicevox_vvm/releases/download/0.16.0/$i.vvm; done
           pip install -q voicevox_core-0.16.0-cp310-abi3-manylinux_2_34_x86_64.whl
       - run: python src/generate.py
-        working-directory: src
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           VV_DIR: ${{ github.workspace }}/vv
-          PYTHONPATH: ${{ github.workspace }}/src
       - name: 確認待ちを作る
         env:
           GH_TOKEN: ${{ github.token }}
