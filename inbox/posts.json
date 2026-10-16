@@ -1,4 +1,4 @@
-{"posts": [
+{"rev": 2, "posts": [
 {"type":"reel","headline":"【飲食店】マップからお客さんが来るまで",
  "reel_script":{"voice":14,"speed":1.18,"intonation":1.35,"scenes":[
   {"type":"hook","big":"味は自信あるのに\n新規が来ない\nその理由","text":"味には自信がある。なのに、新しいお客さんが来ない。その理由。","kw":[],"bg_query":"料理 盛り付け","bg_query_en":"chef plating","voice_tweak":{"speed":0.95,"pitch":0.03}},
