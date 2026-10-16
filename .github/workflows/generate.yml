@@ -20,16 +20,16 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-      - name: 開始を記録（Claudeが状況を読めるように）
+      - name: 記録①台本を受け取り
         run: |
           git config user.name "sns-autopost"
           git config user.email "sns-autopost@users.noreply.github.com"
-          mkdir -p status
-          printf '{"state":"running","time":"%s","run":"%s"}\n' "$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')" "$RUN_URL" > status/latest.json
-          git add status && git commit -q -m "状況: 作成開始 [skip ci]" && git push -q origin HEAD:main || true
+          python3 src/status.py running 台本を受け取り
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: 記録②準備中
+        run: python src/status.py running 準備中
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk fonts-noto-cjk-extra ffmpeg
       - run: pip install -q -r requirements.txt
       - name: 読み上げエンジン（VOICEVOX）を用意
@@ -44,6 +44,8 @@ jobs:
             for i in 0 1; do curl -sSLf -o vvms/$i.vvm $R/VOICEVOX/voicevox_vvm/releases/download/0.16.0/$i.vvm; done
             pip install -q voicevox_core-0.16.0-cp310-abi3-manylinux_2_34_x86_64.whl
           } 2>&1 | tee /tmp/setup.log
+      - name: 記録③映像・声・動画を作成中
+        run: python src/status.py running 映像・声・動画を作成中
       - name: 投稿（動画・画像）を作る
         run: |
           set -o pipefail
@@ -52,6 +54,8 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           VV_DIR: ${{ github.workspace }}/vv
+      - name: 記録④確認待ちを作成中
+        run: python src/status.py running 確認待ちを作成中
       - name: 確認待ちを作る
         env:
           GH_TOKEN: ${{ github.token }}
@@ -65,7 +69,7 @@ jobs:
           FILES=$(git diff --name-only origin/main -- 'queue/*.json')
           python src/pr_body.py "$BR" $FILES > /tmp/body.md
           gh pr create --base main --head "$BR" --title "【確認お願いします】来週の投稿" --body-file /tmp/body.md
-      - name: 結果を記録（Claudeが状況を読めるように）
+      - name: 記録⑤結果
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
@@ -73,17 +77,5 @@ jobs:
         run: |
           git checkout -q -f main 2>/dev/null || true
           git pull -q origin main || true
-          mkdir -p status
-          python3 - <<'PY'
-          import datetime, json, os, subprocess
-          def tail(p, n=2500):
-              return open(p, encoding="utf-8", errors="replace").read()[-n:] if os.path.exists(p) else ""
-          pr = subprocess.run(["gh", "pr", "list", "--state", "open", "--limit", "1", "--json", "url", "-q", ".[0].url"],
-                              capture_output=True, text=True).stdout.strip()
-          now = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
-          json.dump({"state": os.environ["JOB_STATUS"], "time": now.strftime("%Y-%m-%d %H:%M"),
-                     "run": os.environ["RUN_URL"], "pr": pr,
-                     "setup_log": tail("/tmp/setup.log", 800), "log": tail("/tmp/gen.log")},
-                    open("status/latest.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-          PY
-          git add status && git commit -q -m "状況: ${JOB_STATUS} [skip ci]" && git push -q origin HEAD:main || true
+          if [ "$JOB_STATUS" = "success" ]; then STAGE=完成; else STAGE=-; fi
+          python3 src/status.py "$JOB_STATUS" "$STAGE" --final
