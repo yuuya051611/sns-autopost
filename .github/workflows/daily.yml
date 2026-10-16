@@ -1,0 +1,87 @@
+name: 毎日の分析と明日の1本
+on:
+  schedule:
+    - cron: "0 20 * * *"   # 毎日 朝5時（日本時間）
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: sns-daily
+  cancel-in-progress: false
+env:
+  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: 記録①分析を開始
+        run: |
+          git config user.name "sns-autopost"
+          git config user.email "sns-autopost@users.noreply.github.com"
+          python3 src/status.py running 台本を受け取り
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q -r requirements.txt
+      - name: Check：インスタの数字を集めて分析
+        continue-on-error: true   # 数字が取れなくても、明日の1本は作る
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+        run: |
+          python src/insights.py
+          git add analytics
+          git diff --cached --quiet || (git commit -q -m "数字の分析を更新 [skip ci]" && (git push -q origin HEAD:main || (git pull -q --rebase --autostash origin main && git push -q origin HEAD:main)))
+      - name: 記録②準備中
+        run: python src/status.py running 準備中
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk fonts-noto-cjk-extra ffmpeg
+      - name: 読み上げエンジン（VOICEVOX）を用意
+        run: |
+          set -o pipefail
+          {
+            mkdir -p vv/vvms && cd vv
+            R=https://github.com
+            curl -sSLf -O $R/VOICEVOX/voicevox_core/releases/download/0.16.0/voicevox_core-0.16.0-cp310-abi3-manylinux_2_34_x86_64.whl
+            curl -sSLf $R/VOICEVOX/onnxruntime-builder/releases/download/voicevox_onnxruntime-1.17.3/voicevox_onnxruntime-linux-x64-1.17.3.tgz | tar xz
+            curl -sSLf $R/r9y9/open_jtalk/releases/download/v1.11.1/open_jtalk_dic_utf_8-1.11.tar.gz | tar xz
+            for i in 0 1; do curl -sSLf -o vvms/$i.vvm $R/VOICEVOX/voicevox_vvm/releases/download/0.16.0/$i.vvm; done
+            pip install -q voicevox_core-0.16.0-cp310-abi3-manylinux_2_34_x86_64.whl
+          } 2>&1 | tee /tmp/setup.log
+      - name: 記録③映像・声・動画を作成中
+        run: python src/status.py running 映像・声・動画を作成中
+      - name: Act→Plan：分析をもとにAIが明日の1本を書いて、動画・画像にする
+        run: |
+          set -o pipefail
+          python src/daily.py 2>&1 | tee /tmp/gen.log
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          VV_DIR: ${{ github.workspace }}/vv
+      - name: 記録④確認待ちを作成中
+        run: python src/status.py running 確認待ちを作成中
+      - name: 確認待ちを作る
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(git status --porcelain queue)" ]; then echo "新しい投稿はありません"; exit 0; fi
+          DAY=$(TZ=Asia/Tokyo date -d tomorrow +%Y-%m-%d)
+          BR="day-$DAY-$(TZ=Asia/Tokyo date +%H%M)"
+          git checkout -b "$BR"
+          git add -A queue
+          git commit -m "$DAY の投稿（確認待ち）"
+          git push -u origin "$BR"
+          python src/pr_body.py "$BR" "queue/$DAY.json" > /tmp/body.md
+          gh pr create --base main --head "$BR" --title "【確認お願いします】$DAY の投稿" --body-file /tmp/body.md
+      - name: 記録⑤結果
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          git checkout -q -f main 2>/dev/null || true
+          git pull -q origin main || true
+          if [ "$JOB_STATUS" = "success" ]; then STAGE=完成; else STAGE=-; fi
+          python3 src/status.py "$JOB_STATUS" "$STAGE" --final
