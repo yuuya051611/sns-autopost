@@ -2,6 +2,9 @@ name: 来週分の投稿を作る
 on:
   schedule:
     - cron: "0 11 * * 0"   # 毎週日曜 20:00（日本時間）
+  push:
+    branches: [main]
+    paths: ["inbox/posts.json"]   # Claudeが来週分の台本を入れたら動く
   workflow_dispatch:
 permissions:
   contents: write
@@ -10,28 +13,42 @@ concurrency: sns-autopost
 jobs:
   generate:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk ffmpeg
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk fonts-noto-cjk-extra ffmpeg
       - run: pip install -q -r requirements.txt
+      - name: 読み上げエンジン（VOICEVOX）を用意
+        run: |
+          mkdir -p vv/vvms && cd vv
+          R=https://github.com
+          curl -sSL -O $R/VOICEVOX/voicevox_core/releases/download/0.16.0/voicevox_core-0.16.0-cp310-abi3-manylinux_2_34_x86_64.whl
+          curl -sSL $R/VOICEVOX/onnxruntime-builder/releases/download/voicevox_onnxruntime-1.17.3/voicevox_onnxruntime-linux-x64-1.17.3.tgz | tar xz
+          curl -sSL $R/r9y9/open_jtalk/releases/download/v1.11.1/open_jtalk_dic_utf_8-1.11.tar.gz | tar xz
+          for i in 0 1; do curl -sSL -o vvms/$i.vvm $R/VOICEVOX/voicevox_vvm/releases/download/0.16.0/$i.vvm; done
+          pip install -q voicevox_core-0.16.0-cp310-abi3-manylinux_2_34_x86_64.whl
       - run: python src/generate.py
+        working-directory: src
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+          VV_DIR: ${{ github.workspace }}/vv
+          PYTHONPATH: ${{ github.workspace }}/src
       - name: 確認待ちを作る
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ -z "$(git status --porcelain queue)" ]; then echo "新しい投稿はありません"; exit 0; fi
+          if [ -z "$(git status --porcelain queue inbox)" ]; then echo "新しい投稿はありません"; exit 0; fi
           BR="week-$(TZ=Asia/Tokyo date +%Y%m%d-%H%M)"
           git config user.name "sns-autopost"
           git config user.email "sns-autopost@users.noreply.github.com"
           git checkout -b "$BR"
-          git add queue
+          git add -A queue inbox
           git commit -m "来週分の投稿（確認待ち）"
           git push -u origin "$BR"
           FILES=$(git diff --name-only origin/main -- 'queue/*.json')
           python src/pr_body.py "$BR" $FILES > /tmp/body.md
-          gh pr create --base main --head "$BR" --title "【確認お願いします】来週の投稿7本" --body-file /tmp/body.md
+          gh pr create --base main --head "$BR" --title "【確認お願いします】来週の投稿" --body-file /tmp/body.md
