@@ -2,18 +2,18 @@
 
 使い方: python src/pr_body.py <ブランチ名> <日付JSONのパス...>
 """
-import datetime as dt
 import os
 import sys
 
 from common import WEEKDAYS, read_json
+import datetime as dt
 
 
 def main():
     branch, files = sys.argv[1], sorted(sys.argv[2:])
     repo = os.environ.get("GITHUB_REPOSITORY", "")
     out = [
-        "## 来週の投稿の確認をお願いします",
+        "## 投稿の確認をお願いします",
         "",
         "問題なければ、いちばん下の **Merge pull request** → **Confirm merge** を押してください。押した分だけ毎日12時に投稿されます。",
         "直したい投稿があれば、Claudeに「◯曜日の投稿をこう直して」と伝えてください。",
@@ -33,6 +33,8 @@ def main():
         ]
         if is_reel:
             out += [f"[▶ 動画を再生して確認する]({base + item['video']})", ""]
+        if item.get("improvement"):
+            out += [f"> 🔁 **前日までの結果から直したところ**：{item['improvement']}", ""]
         out += [
             item["caption"].replace("\n", "  \n"),
             "",
