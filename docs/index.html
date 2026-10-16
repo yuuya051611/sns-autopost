@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SNS自動投稿 制作ダッシュボード｜RARE STELLA</title>
+<style>
+:root{
+  --bg:#f6f4f1; --panel:#ffffff; --ink:#1d1d22; --muted:#6b6b76; --line:#e7e2dc;
+  --red:#d7262e; --yellow:#f2b705; --ok:#1e8e3e; --run:#e08a00; --bad:#d7262e; --soft:#fbeaea;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#121216; --panel:#1b1b21; --ink:#f1f1f4; --muted:#a0a0ab; --line:#2c2c35;
+         --soft:#3a1b1d; color-scheme: dark; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",system-ui,sans-serif;line-height:1.6}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 18px 60px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:18px}
+h1{font-size:clamp(20px,3vw,28px);margin:0}
+h1 small{display:block;font-size:13px;color:var(--muted);font-weight:500}
+.upd{font-size:12px;color:var(--muted)}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(12,1fr)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}
+.c12{grid-column:span 12}.c8{grid-column:span 8}.c4{grid-column:span 4}.c6{grid-column:span 6}
+@media (max-width:860px){.c8,.c4,.c6{grid-column:span 12}}
+h2{font-size:15px;margin:0 0 12px;color:var(--muted);font-weight:700;letter-spacing:.02em}
+.status{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;font-weight:800;font-size:16px}
+.badge.running{background:#fff3df;color:var(--run)} .badge.success{background:#e6f4ea;color:var(--ok)}
+.badge.failure,.badge.cancelled{background:var(--soft);color:var(--bad)} .badge.none{background:var(--line);color:var(--muted)}
+@media (prefers-color-scheme: dark){.badge.running{background:#3b2a10}.badge.success{background:#12301b}}
+.dot{width:10px;height:10px;border-radius:50%;background:currentColor}
+.running .dot{animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.25}}
+.links a{display:inline-block;margin-right:10px;font-weight:700;color:var(--red);text-decoration:none}
+.links a:hover{text-decoration:underline}
+.pipe{display:flex;gap:6px;overflow-x:auto;padding:6px 2px 4px}
+.step{flex:1 1 0;min-width:120px;position:relative;border-radius:12px;padding:12px 10px;background:var(--bg);border:2px solid var(--line);text-align:center;font-size:13px;font-weight:700;color:var(--muted)}
+.step .n{display:block;font-size:22px;line-height:1;margin-bottom:4px}
+.step.done{border-color:var(--ok);color:var(--ok)}
+.step.now{border-color:var(--run);color:var(--run);background:#fff8ec}
+@media (prefers-color-scheme: dark){.step.now{background:#2a2112}}
+.step.fail{border-color:var(--bad);color:var(--bad)}
+.step.now::after{content:"";position:absolute;left:10%;right:10%;bottom:6px;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--run) 40%,transparent 40%);background-size:200% 100%;animation:bar 1.2s linear infinite}
+@keyframes bar{to{background-position:-200% 0}}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media (max-width:600px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--bg);border-radius:12px;padding:12px}
+.kpi b{display:block;font-size:30px;line-height:1.1}
+.kpi span{font-size:12px;color:var(--muted)}
+svg text{font-family:inherit}
+.week{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.post{background:var(--bg);border-radius:14px;padding:12px;border:1px solid var(--line);display:flex;flex-direction:column;gap:8px;min-width:0}
+.post .top{display:flex;justify-content:space-between;align-items:center}
+.day{font-weight:800}
+.type{font-size:12px;font-weight:800;padding:2px 10px;border-radius:999px;color:#fff;background:var(--red)}
+.type.image{background:#2f6fed}
+.post h3{margin:0;font-size:15px;line-height:1.4}
+.thumb{width:100%;aspect-ratio:9/16;max-height:320px;object-fit:cover;border-radius:10px;background:var(--line)}
+.thumb.img{aspect-ratio:4/5}
+.board{display:flex;flex-direction:column;gap:6px}
+.scene{display:flex;gap:8px;align-items:flex-start;font-size:12px;background:var(--panel);border-radius:8px;padding:6px 8px;border-left:4px solid var(--red)}
+.scene .k{font-weight:800;white-space:nowrap;color:var(--red)}
+.scene .q{color:var(--muted);font-size:11px}
+.points{margin:0;padding-left:18px;font-size:13px}
+.vlink{font-size:13px;font-weight:800;color:var(--red);text-decoration:none}
+.log{white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;font-size:12px;background:var(--bg);border-radius:10px;padding:10px;max-height:240px;overflow:auto}
+.hist{list-style:none;margin:0;padding:0;font-size:13px}
+.hist li{display:flex;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line)}
+.hist time{color:var(--muted);min-width:110px}
+.empty{color:var(--muted);font-size:14px}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;padding:6px 8px;border-radius:6px;opacity:0;transition:opacity .1s}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>SNS自動投稿 制作ダッシュボード<small>RARE STELLA ｜ 今どんな投稿を作っているかが、いつでも見られます</small></h1>
+    <div class="upd" id="upd">読み込み中…</div>
+  </header>
+
+  <div class="grid">
+    <section class="card c12">
+      <div class="status">
+        <span class="badge none" id="badge"><span class="dot"></span><span id="badgeText">確認中</span></span>
+        <div class="links" id="links"></div>
+      </div>
+      <div style="height:14px"></div>
+      <h2>作業の流れ（今どこ？）</h2>
+      <div class="pipe" id="pipe"></div>
+    </section>
+
+    <section class="card c8">
+      <h2>今週の投稿の内訳</h2>
+      <div class="kpis">
+        <div class="kpi"><b id="kTotal">—</b><span>投稿の本数</span></div>
+        <div class="kpi"><b id="kReel">—</b><span>リール動画</span></div>
+        <div class="kpi"><b id="kImg">—</b><span>画像</span></div>
+        <div class="kpi"><b id="kSec">—</b><span>リールの合計（秒・目安）</span></div>
+      </div>
+      <div style="height:14px"></div>
+      <h2>リールごとの長さと場面の数（目安）</h2>
+      <div id="bars"></div>
+    </section>
+
+    <section class="card c4">
+      <h2>リールと画像の割合</h2>
+      <div id="donut"></div>
+      <div style="height:10px"></div>
+      <h2>場面の種類</h2>
+      <div id="kinds"></div>
+    </section>
+
+    <section class="card c12">
+      <h2 id="weekTitle">今週の7本（台本と絵コンテ）</h2>
+      <div class="week" id="week"><p class="empty">読み込み中…</p></div>
+    </section>
+
+    <section class="card c6">
+      <h2>作業の記録</h2>
+      <ul class="hist" id="hist"><li class="empty">まだ記録がありません</li></ul>
+    </section>
+    <section class="card c6">
+      <h2>作業のログ（止まったときの原因がここに出ます）</h2>
+      <div class="log" id="log">—</div>
+    </section>
+  </div>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+const OWNER = "yuuya051611", REPO = "sns-autopost";
+const WEEK = ["日","月","火","水","木","金","土"];
+const KIND = {hook:"つかみ",reveal:"ドーン",search:"検索画面",results:"検索結果",stat:"数字",check:"チェック",
+  compare:"比較",steps:"ステップ",template:"テンプレ",action:"経路タップ",cta:"最後の案内",video:"映像",photo:"写真",
+  point:"ポイント",hidden:"埋もれる店",chart:"グラフ",pair:"カード",shop:"イラスト"};
+const $ = id => document.getElementById(id);
+const tip = $("tip");
+
+async function getJSON(path, ref = "main") {
+  // まずGitHub API（新しい）、だめならrawファイル
+  try {
+    const r = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${path}?ref=${encodeURIComponent(ref)}`,
+      {headers: {Accept: "application/vnd.github.raw+json"}, cache: "no-store"});
+    if (r.ok) return await r.json();
+  } catch (e) {}
+  try {
+    const r = await fetch(`https://raw.githubusercontent.com/${OWNER}/${REPO}/${ref}/${path}?t=${Date.now()}`, {cache: "no-store"});
+    if (r.ok) return await r.json();
+  } catch (e) {}
+  return null;
+}
+async function listDir(path, ref) {
+  try {
+    const r = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${path}?ref=${encodeURIComponent(ref)}`, {cache: "no-store"});
+    if (r.ok) return await r.json();
+  } catch (e) {}
+  return [];
+}
+const raw = (ref, p) => `https://raw.githubusercontent.com/${OWNER}/${REPO}/${ref}/${p}`;
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function secOf(scenes) { // 読み上げの文字数から長さの目安（1秒あたり約7.5文字）
+  const chars = scenes.reduce((a, s) => a + (s.speak || s.text || "").length, 0);
+  return Math.round(chars / 7.5 + scenes.length * 0.35);
+}
+
+function renderStatus(st) {
+  const state = st ? st.state : null;
+  const label = {running: "作っている途中", success: "完成！確認待ちが届いています", failure: "途中で止まりました", cancelled: "新しい作業に切り替わりました"}[state] || "まだ作業はありません";
+  const b = $("badge"); b.className = "badge " + (state || "none"); $("badgeText").textContent = label;
+  const links = $("links"); links.textContent = "";
+  if (st && st.pr) { const a = el("a", null, "▶ 確認待ちを開く"); a.href = st.pr; a.target = "_blank"; links.append(a); }
+  if (st && st.run) { const a = el("a", null, "作業の画面"); a.href = st.run; a.target = "_blank"; links.append(a); }
+  const stages = (st && st.stages) || ["台本を受け取り","準備中","映像・声・動画を作成中","確認待ちを作成中","完成"];
+  const cur = st ? stages.indexOf(st.stage) : -1;
+  const pipe = $("pipe"); pipe.textContent = "";
+  stages.forEach((s, i) => {
+    const d = el("div", "step");
+    let mark = String(i + 1);
+    if (st && (i < cur || (state === "success" && i <= cur))) { d.classList.add("done"); mark = "✓"; }
+    else if (i === cur && state === "running") d.classList.add("now");
+    else if (i === cur && state === "failure") { d.classList.add("fail"); mark = "✕"; }
+    d.append(el("span", "n", mark), document.createTextNode(s));
+    pipe.append(d);
+  });
+  const hist = $("hist"); hist.textContent = "";
+  ((st && st.history) || []).slice().reverse().forEach(h => {
+    const li = el("li"); li.append(el("time", null, h.time), el("span", null, h.stage + (h.state === "failure" ? "（止まりました）" : "")));
+    hist.append(li);
+  });
+  if (!hist.children.length) hist.append(el("li", "empty", "まだ記録がありません"));
+  $("log").textContent = (st && ((st.log || "") + (st.state === "failure" && st.setup_log ? "\n--- 準備のログ ---\n" + st.setup_log : ""))) || "—";
+}
+
+function barChart(reels) {
+  const box = $("bars"); box.textContent = "";
+  if (!reels.length) { box.append(el("p", "empty", "リールはまだありません")); return; }
+  const w = Math.max(280, box.clientWidth || 600), rowH = 46, h = reels.length * rowH + 10, left = 120;
+  const max = Math.max(...reels.map(r => r.sec), 30);
+  const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`); svg.setAttribute("width", "100%");
+  reels.forEach((r, i) => {
+    const y = i * rowH + 6, bw = (w - left - 60) * r.sec / max;
+    const t = document.createElementNS(ns, "text"); t.setAttribute("x", 0); t.setAttribute("y", y + 22);
+    t.setAttribute("font-size", 13); t.setAttribute("fill", "currentColor"); t.textContent = r.label; svg.append(t);
+    const rc = document.createElementNS(ns, "rect"); rc.setAttribute("x", left); rc.setAttribute("y", y + 6);
+    rc.setAttribute("height", 24); rc.setAttribute("rx", 6); rc.setAttribute("width", 0); rc.setAttribute("fill", "var(--red)");
+    rc.style.transition = "width .8s ease"; requestAnimationFrame(() => rc.setAttribute("width", bw));
+    rc.addEventListener("mousemove", e => { tip.textContent = `${r.title}：約${r.sec}秒・${r.n}場面`; tip.style.left = Math.min(e.clientX + 12, innerWidth - 220) + "px"; tip.style.top = e.clientY + 12 + "px"; tip.style.opacity = 1; });
+    rc.addEventListener("mouseleave", () => tip.style.opacity = 0);
+    svg.append(rc);
+    const v = document.createElementNS(ns, "text"); v.setAttribute("x", left + bw + 8); v.setAttribute("y", y + 23);
+    v.setAttribute("font-size", 12); v.setAttribute("fill", "var(--muted)"); v.textContent = `約${r.sec}秒・${r.n}場面`; svg.append(v);
+  });
+  box.append(svg);
+}
+
+function donut(reel, img) {
+  const box = $("donut"); box.textContent = "";
+  const total = reel + img; if (!total) { box.append(el("p", "empty", "—")); return; }
+  const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 200 200"); svg.setAttribute("width", "100%"); svg.style.maxWidth = "220px"; svg.style.display = "block"; svg.style.margin = "0 auto";
+  const R = 80, C = 2 * Math.PI * R; let off = 0;
+  [[reel, "var(--red)", "リール"], [img, "#2f6fed", "画像"]].forEach(([v, col, name]) => {
+    const c = document.createElementNS(ns, "circle"); c.setAttribute("cx", 100); c.setAttribute("cy", 100); c.setAttribute("r", R);
+    c.setAttribute("fill", "none"); c.setAttribute("stroke", col); c.setAttribute("stroke-width", 30);
+    c.setAttribute("stroke-dasharray", `${C * v / total} ${C}`); c.setAttribute("stroke-dashoffset", -off);
+    c.setAttribute("transform", "rotate(-90 100 100)"); off += C * v / total; svg.append(c);
+  });
+  const t = document.createElementNS(ns, "text"); t.setAttribute("x", 100); t.setAttribute("y", 96); t.setAttribute("text-anchor", "middle");
+  t.setAttribute("font-size", 30); t.setAttribute("font-weight", 800); t.setAttribute("fill", "currentColor"); t.textContent = total + "本"; svg.append(t);
+  const s = document.createElementNS(ns, "text"); s.setAttribute("x", 100); s.setAttribute("y", 122); s.setAttribute("text-anchor", "middle");
+  s.setAttribute("font-size", 12); s.setAttribute("fill", "var(--muted)"); s.textContent = `リール${reel}・画像${img}`; svg.append(s);
+  box.append(svg);
+}
+
+function kindChips(counts) {
+  const box = $("kinds"); box.textContent = "";
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (!entries.length) { box.append(el("p", "empty", "—")); return; }
+  const max = entries[0][1];
+  entries.forEach(([k, v]) => {
+    const row = el("div"); row.style.cssText = "display:flex;align-items:center;gap:8px;font-size:12px;margin:4px 0";
+    const name = el("span", null, KIND[k] || k); name.style.minWidth = "72px";
+    const bar = el("span"); bar.style.cssText = `height:10px;border-radius:5px;background:var(--yellow);width:${Math.max(8, 140 * v / max)}px`;
+    row.append(name, bar, el("span", null, String(v)));
+    box.append(row);
+  });
+}
+
+function sceneLine(s) {
+  const d = el("div", "scene");
+  const body = el("div");
+  const main = (s.big || s.title || s.heading || s.num || s.text || "").replace(/\n/g, " ");
+  body.append(el("div", null, main));
+  if (s.bg_query) body.append(el("div", "q", "背景：" + s.bg_query));
+  d.append(el("span", "k", KIND[s.type] || s.type), body);
+  return d;
+}
+
+function renderWeek(posts, dates, ref, media) {
+  const box = $("week"); box.textContent = "";
+  if (!posts.length) { box.append(el("p", "empty", "今週の台本はまだありません。Claudeに「来週分作って」と送ってください。")); return; }
+  posts.forEach((p, i) => {
+    const card = el("article", "post");
+    const top = el("div", "top");
+    const dt = dates[i];
+    top.append(el("span", "day", dt ? `${dt.getMonth() + 1}/${dt.getDate()}（${WEEK[dt.getDay()]}）` : `${i + 1}本目`),
+               el("span", "type " + (p.type === "reel" ? "" : "image"), p.type === "reel" ? "リール" : "画像"));
+    card.append(top, el("h3", null, p.headline || ""));
+    const m = media[i];
+    if (m && m.image) { const img = el("img", "thumb" + (p.type === "reel" ? "" : " img")); img.loading = "lazy"; img.alt = p.headline || ""; img.src = raw(ref, m.image); card.append(img); }
+    if (m && m.video) { const a = el("a", "vlink", "▶ 動画を再生"); a.href = raw(ref, m.video); a.target = "_blank"; card.append(a); }
+    const sc = (p.reel_script && p.reel_script.scenes) || [];
+    if (sc.length) { const b = el("div", "board"); sc.forEach(s => b.append(sceneLine(s))); card.append(b); }
+    else if (p.points) { const ul = el("ul", "points"); p.points.forEach(t => ul.append(el("li", null, t))); card.append(ul); }
+    box.append(card);
+  });
+}
+
+function nextMonday() {
+  const now = new Date(); const d = new Date(now); const add = ((8 - now.getDay()) % 7) || 7;
+  d.setDate(now.getDate() + add); return [...Array(7)].map((_, i) => { const x = new Date(d); x.setDate(d.getDate() + i); return x; });
+}
+
+async function load() {
+  const st = await getJSON("status/latest.json");
+  renderStatus(st);
+  let posts = [], ref = "main", media = [], dates = nextMonday();
+  const inbox = await getJSON("inbox/posts.json");
+  if (inbox && inbox.posts) posts = inbox.posts;
+  if (st && st.branch) { // 完成していれば、できあがった画像・動画も見せる
+    ref = st.branch;
+    const files = (await listDir("queue", ref)).filter(f => /\d{4}-\d{2}-\d{2}\.json$/.test(f.name)).sort((a, b) => a.name.localeCompare(b.name)).slice(-7);
+    const items = await Promise.all(files.map(f => getJSON("queue/" + f.name, ref)));
+    if (items.length) { media = items; dates = items.map(x => x ? new Date(x.date + "T00:00:00") : null); }
+  }
+  if (!posts.length) { // 確認待ちを承認したあとは、投稿予定（queue）から表示する
+    const files = (await listDir("queue", "main")).filter(f => /\d{4}-\d{2}-\d{2}\.json$/.test(f.name)).sort((a, b) => a.name.localeCompare(b.name)).slice(-7);
+    const items = (await Promise.all(files.map(f => getJSON("queue/" + f.name, "main")))).filter(Boolean);
+    if (items.length) { media = items; ref = "main"; dates = items.map(x => new Date(x.date + "T00:00:00"));
+      posts = items.map(x => ({type: x.type || "image", headline: x.headline})); $("weekTitle").textContent = "投稿予定の7本"; }
+  }
+  const reels = posts.filter(p => p.type === "reel"), imgs = posts.filter(p => p.type !== "reel");
+  const reelRows = reels.map(p => { const sc = (p.reel_script && p.reel_script.scenes) || []; const i = posts.indexOf(p); const d = dates[i];
+    return {label: d ? `${d.getMonth() + 1}/${d.getDate()}（${WEEK[d.getDay()]}）` : `${i + 1}本目`, title: p.headline, sec: secOf(sc), n: sc.length}; });
+  $("kTotal").textContent = posts.length || "—"; $("kReel").textContent = reels.length; $("kImg").textContent = imgs.length;
+  $("kSec").textContent = reelRows.reduce((a, r) => a + r.sec, 0) || "—";
+  barChart(reelRows); donut(reels.length, imgs.length);
+  const counts = {}; reels.forEach(p => ((p.reel_script || {}).scenes || []).forEach(s => counts[s.type] = (counts[s.type] || 0) + 1));
+  kindChips(counts);
+  renderWeek(posts, dates, ref, media);
+  $("upd").textContent = "最終更新 " + new Date().toLocaleTimeString("ja-JP", {hour: "2-digit", minute: "2-digit"}) + (st && st.state === "running" ? "・30秒ごとに自動更新中" : "");
+  clearTimeout(window.__t); window.__t = setTimeout(load, st && st.state === "running" ? 30000 : 120000);
+}
+load();
+</script>
+</body>
+</html>
