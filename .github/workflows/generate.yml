@@ -9,13 +9,24 @@ on:
 permissions:
   contents: write
   pull-requests: write
-concurrency: sns-autopost
+concurrency:
+  group: sns-generate
+  cancel-in-progress: true   # 新しい台本が入ったら、古い作業は止めて作り直す
+env:
+  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 jobs:
   generate:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+      - name: 開始を記録（Claudeが状況を読めるように）
+        run: |
+          git config user.name "sns-autopost"
+          git config user.email "sns-autopost@users.noreply.github.com"
+          mkdir -p status
+          printf '{"state":"running","time":"%s","run":"%s"}\n' "$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M')" "$RUN_URL" > status/latest.json
+          git add status && git commit -q -m "状況: 作成開始 [skip ci]" && git push -q origin HEAD:main || true
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -23,14 +34,20 @@ jobs:
       - run: pip install -q -r requirements.txt
       - name: 読み上げエンジン（VOICEVOX）を用意
         run: |
-          mkdir -p vv/vvms && cd vv
-          R=https://github.com
-          curl -sSL -O $R/VOICEVOX/voicevox_core/releases/download/0.16.0/voicevox_core-0.16.0-cp310-abi3-manylinux_2_34_x86_64.whl
-          curl -sSL $R/VOICEVOX/onnxruntime-builder/releases/download/voicevox_onnxruntime-1.17.3/voicevox_onnxruntime-linux-x64-1.17.3.tgz | tar xz
-          curl -sSL $R/r9y9/open_jtalk/releases/download/v1.11.1/open_jtalk_dic_utf_8-1.11.tar.gz | tar xz
-          for i in 0 1; do curl -sSL -o vvms/$i.vvm $R/VOICEVOX/voicevox_vvm/releases/download/0.16.0/$i.vvm; done
-          pip install -q voicevox_core-0.16.0-cp310-abi3-manylinux_2_34_x86_64.whl
-      - run: python src/generate.py
+          set -o pipefail
+          {
+            mkdir -p vv/vvms && cd vv
+            R=https://github.com
+            curl -sSLf -O $R/VOICEVOX/voicevox_core/releases/download/0.16.0/voicevox_core-0.16.0-cp310-abi3-manylinux_2_34_x86_64.whl
+            curl -sSLf $R/VOICEVOX/onnxruntime-builder/releases/download/voicevox_onnxruntime-1.17.3/voicevox_onnxruntime-linux-x64-1.17.3.tgz | tar xz
+            curl -sSLf $R/r9y9/open_jtalk/releases/download/v1.11.1/open_jtalk_dic_utf_8-1.11.tar.gz | tar xz
+            for i in 0 1; do curl -sSLf -o vvms/$i.vvm $R/VOICEVOX/voicevox_vvm/releases/download/0.16.0/$i.vvm; done
+            pip install -q voicevox_core-0.16.0-cp310-abi3-manylinux_2_34_x86_64.whl
+          } 2>&1 | tee /tmp/setup.log
+      - name: 投稿（動画・画像）を作る
+        run: |
+          set -o pipefail
+          python src/generate.py 2>&1 | tee /tmp/gen.log
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
@@ -41,8 +58,6 @@ jobs:
         run: |
           if [ -z "$(git status --porcelain queue inbox)" ]; then echo "新しい投稿はありません"; exit 0; fi
           BR="week-$(TZ=Asia/Tokyo date +%Y%m%d-%H%M)"
-          git config user.name "sns-autopost"
-          git config user.email "sns-autopost@users.noreply.github.com"
           git checkout -b "$BR"
           git add -A queue inbox
           git commit -m "来週分の投稿（確認待ち）"
@@ -50,3 +65,25 @@ jobs:
           FILES=$(git diff --name-only origin/main -- 'queue/*.json')
           python src/pr_body.py "$BR" $FILES > /tmp/body.md
           gh pr create --base main --head "$BR" --title "【確認お願いします】来週の投稿" --body-file /tmp/body.md
+      - name: 結果を記録（Claudeが状況を読めるように）
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          git checkout -q -f main 2>/dev/null || true
+          git pull -q origin main || true
+          mkdir -p status
+          python3 - <<'PY'
+          import datetime, json, os, subprocess
+          def tail(p, n=2500):
+              return open(p, encoding="utf-8", errors="replace").read()[-n:] if os.path.exists(p) else ""
+          pr = subprocess.run(["gh", "pr", "list", "--state", "open", "--limit", "1", "--json", "url", "-q", ".[0].url"],
+                              capture_output=True, text=True).stdout.strip()
+          now = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
+          json.dump({"state": os.environ["JOB_STATUS"], "time": now.strftime("%Y-%m-%d %H:%M"),
+                     "run": os.environ["RUN_URL"], "pr": pr,
+                     "setup_log": tail("/tmp/setup.log", 800), "log": tail("/tmp/gen.log")},
+                    open("status/latest.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+          PY
+          git add status && git commit -q -m "状況: ${JOB_STATUS} [skip ci]" && git push -q origin HEAD:main || true
