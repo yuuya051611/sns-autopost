@@ -20,10 +20,15 @@
    "stage": "確認待ちを作成中",
    "state": "running",
    "time": "2026-10-18 23:33"
+  },
+  {
+   "stage": "完成",
+   "state": "success",
+   "time": "2026-10-18 23:33"
   }
  ],
- "state": "running",
- "stage": "確認待ちを作成中",
+ "state": "success",
+ "stage": "完成",
  "stages": [
   "台本を受け取り",
   "準備中",
@@ -32,5 +37,9 @@
   "完成"
  ],
  "time": "2026-10-18 23:33",
- "run": "https://github.com/yuuya051611/sns-autopost/actions/runs/39135839592"
+ "run": "https://github.com/yuuya051611/sns-autopost/actions/runs/39135839592",
+ "pr": "https://github.com/yuuya051611/sns-autopost/pull/2",
+ "branch": "week-20261018-2333",
+ "setup_log": "",
+ "log": "Claudeが書いた文章（inbox/posts.json）を使います。\n2026-10-19（リール）: 【飲食店】マップからお客さんが来るまで\n2026-10-20（画像）: グルメサイトの掲載料、毎月きつくないですか？\n2026-10-21（リール）: 【専門知識】マップの順位はお金で買えない\n2026-10-22（画像）: 平日の夜と雨の日、暇じゃないですか？\n2026-10-23（リール）: 【寄り添い】悪い口コミで落ち込んだら\n2026-10-24（画像）: 常連さんへの口コミの頼み方\n2026-10-25（リール）: 【まとめ】何から手をつければいい？\n"
 }
