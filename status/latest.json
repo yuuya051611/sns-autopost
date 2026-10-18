@@ -10,10 +10,15 @@
    "stage": "準備中",
    "state": "running",
    "time": "2026-10-18 23:24"
+  },
+  {
+   "stage": "映像・声・動画を作成中",
+   "state": "running",
+   "time": "2026-10-18 23:25"
   }
  ],
  "state": "running",
- "stage": "準備中",
+ "stage": "映像・声・動画を作成中",
  "stages": [
   "台本を受け取り",
   "準備中",
@@ -21,6 +26,6 @@
   "確認待ちを作成中",
   "完成"
  ],
- "time": "2026-10-18 23:24",
+ "time": "2026-10-18 23:25",
  "run": "https://github.com/yuuya051611/sns-autopost/actions/runs/39135839592"
 }
