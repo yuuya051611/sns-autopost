@@ -5,10 +5,15 @@
    "stage": "台本を受け取り",
    "state": "running",
    "time": "2026-10-19 07:08"
+  },
+  {
+   "stage": "準備中",
+   "state": "running",
+   "time": "2026-10-19 07:08"
   }
  ],
  "state": "running",
- "stage": "台本を受け取り",
+ "stage": "準備中",
  "stages": [
   "台本を受け取り",
   "準備中",
