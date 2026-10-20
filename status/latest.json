@@ -10,10 +10,15 @@
    "stage": "準備中",
    "state": "running",
    "time": "2026-10-21 07:52"
+  },
+  {
+   "stage": "映像・声・動画を作成中",
+   "state": "running",
+   "time": "2026-10-21 07:52"
   }
  ],
  "state": "running",
- "stage": "準備中",
+ "stage": "映像・声・動画を作成中",
  "stages": [
   "台本を受け取り",
   "準備中",
