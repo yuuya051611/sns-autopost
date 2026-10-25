@@ -1,34 +1,14 @@
 {
- "started": "2026-10-25 23:54",
+ "started": "2026-10-26 07:12",
  "history": [
   {
    "stage": "台本を受け取り",
    "state": "running",
-   "time": "2026-10-25 23:54"
-  },
-  {
-   "stage": "準備中",
-   "state": "running",
-   "time": "2026-10-25 23:54"
-  },
-  {
-   "stage": "映像・声・動画を作成中",
-   "state": "running",
-   "time": "2026-10-25 23:55"
-  },
-  {
-   "stage": "確認待ちを作成中",
-   "state": "running",
-   "time": "2026-10-26 00:05"
-  },
-  {
-   "stage": "完成",
-   "state": "success",
-   "time": "2026-10-26 00:05"
+   "time": "2026-10-26 07:12"
   }
  ],
- "state": "success",
- "stage": "完成",
+ "state": "running",
+ "stage": "台本を受け取り",
  "stages": [
   "台本を受け取り",
   "準備中",
@@ -36,10 +16,6 @@
   "確認待ちを作成中",
   "完成"
  ],
- "time": "2026-10-26 00:05",
- "run": "https://github.com/yuuya051611/sns-autopost/actions/runs/40204456079",
- "pr": "https://github.com/yuuya051611/sns-autopost/pull/3",
- "branch": "week-20261026-0005",
- "setup_log": "\n[notice] A new release of pip is available: 26.2.1 -> 26.2.2\n[notice] To update, run: pip install --upgrade pip\n",
- "log": "Claudeが書いた文章（inbox/posts.json）を使います。\n2026-10-26（リール）: 【飲食店】マップからお客さんが来るまで\n2026-10-27（画像）: グルメサイトの掲載料、毎月きつくないですか？\n2026-10-28（リール）: 【専門知識】マップの順位はお金で買えない\n2026-10-29（画像）: 平日の夜と雨の日、暇じゃないですか？\n2026-10-30（リール）: 【寄り添い】悪い口コミで落ち込んだら\n2026-10-31（画像）: 常連さんへの口コミの頼み方\n2026-11-01（リール）: 【まとめ】何から手をつければいい？\n"
+ "time": "2026-10-26 07:12",
+ "run": "https://github.com/yuuya051611/sns-autopost/actions/runs/40239113150"
 }
