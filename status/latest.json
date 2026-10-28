@@ -15,9 +15,14 @@
    "stage": "映像・声・動画を作成中",
    "state": "running",
    "time": "2026-10-29 08:46"
+  },
+  {
+   "stage": "映像・声・動画を作成中",
+   "state": "failure",
+   "time": "2026-10-29 08:46"
   }
  ],
- "state": "running",
+ "state": "failure",
  "stage": "映像・声・動画を作成中",
  "stages": [
   "台本を受け取り",
@@ -27,5 +32,9 @@
   "完成"
  ],
  "time": "2026-10-29 08:46",
- "run": "https://github.com/yuuya051611/sns-autopost/actions/runs/40789566132"
+ "run": "https://github.com/yuuya051611/sns-autopost/actions/runs/40789566132",
+ "pr": "https://github.com/yuuya051611/sns-autopost/pull/3",
+ "branch": "week-20261026-0005",
+ "setup_log": "",
+ "log": "環境変数 ANTHROPIC_API_KEY が設定されていません（GitHubのSecretsを確認してください）\n"
 }
