@@ -1,29 +1,14 @@
 {
- "started": "2026-10-28 08:24",
+ "started": "2026-10-29 08:45",
  "history": [
   {
    "stage": "台本を受け取り",
    "state": "running",
-   "time": "2026-10-28 08:24"
-  },
-  {
-   "stage": "準備中",
-   "state": "running",
-   "time": "2026-10-28 08:24"
-  },
-  {
-   "stage": "映像・声・動画を作成中",
-   "state": "running",
-   "time": "2026-10-28 08:25"
-  },
-  {
-   "stage": "映像・声・動画を作成中",
-   "state": "failure",
-   "time": "2026-10-28 08:25"
+   "time": "2026-10-29 08:45"
   }
  ],
- "state": "failure",
- "stage": "映像・声・動画を作成中",
+ "state": "running",
+ "stage": "台本を受け取り",
  "stages": [
   "台本を受け取り",
   "準備中",
@@ -31,10 +16,6 @@
   "確認待ちを作成中",
   "完成"
  ],
- "time": "2026-10-28 08:25",
- "run": "https://github.com/yuuya051611/sns-autopost/actions/runs/40601924476",
- "pr": "https://github.com/yuuya051611/sns-autopost/pull/3",
- "branch": "week-20261026-0005",
- "setup_log": "\n[notice] A new release of pip is available: 26.2.1 -> 26.2.2\n[notice] To update, run: pip install --upgrade pip\n",
- "log": "環境変数 ANTHROPIC_API_KEY が設定されていません（GitHubのSecretsを確認してください）\n"
+ "time": "2026-10-29 08:45",
+ "run": "https://github.com/yuuya051611/sns-autopost/actions/runs/40789566132"
 }
