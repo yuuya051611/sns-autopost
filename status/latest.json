@@ -5,10 +5,15 @@
    "stage": "台本を受け取り",
    "state": "running",
    "time": "2026-10-31 08:24"
+  },
+  {
+   "stage": "準備中",
+   "state": "running",
+   "time": "2026-10-31 08:25"
   }
  ],
  "state": "running",
- "stage": "台本を受け取り",
+ "stage": "準備中",
  "stages": [
   "台本を受け取り",
   "準備中",
@@ -16,6 +21,6 @@
   "確認待ちを作成中",
   "完成"
  ],
- "time": "2026-10-31 08:24",
+ "time": "2026-10-31 08:25",
  "run": "https://github.com/yuuya051611/sns-autopost/actions/runs/41144318324"
 }
