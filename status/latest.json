@@ -1,29 +1,14 @@
 {
- "started": "2026-11-13 09:49",
+ "started": "2026-11-14 09:35",
  "history": [
   {
    "stage": "台本を受け取り",
    "state": "running",
-   "time": "2026-11-13 09:49"
-  },
-  {
-   "stage": "準備中",
-   "state": "running",
-   "time": "2026-11-13 09:50"
-  },
-  {
-   "stage": "映像・声・動画を作成中",
-   "state": "running",
-   "time": "2026-11-13 09:51"
-  },
-  {
-   "stage": "映像・声・動画を作成中",
-   "state": "failure",
-   "time": "2026-11-13 09:51"
+   "time": "2026-11-14 09:35"
   }
  ],
- "state": "failure",
- "stage": "映像・声・動画を作成中",
+ "state": "running",
+ "stage": "台本を受け取り",
  "stages": [
   "台本を受け取り",
   "準備中",
@@ -31,10 +16,6 @@
   "確認待ちを作成中",
   "完成"
  ],
- "time": "2026-11-13 09:51",
- "run": "https://github.com/yuuya051611/sns-autopost/actions/runs/43340157475",
- "pr": "https://github.com/yuuya051611/sns-autopost/pull/5",
- "branch": "week-20261109-0206",
- "setup_log": "",
- "log": "環境変数 ANTHROPIC_API_KEY が設定されていません（GitHubのSecretsを確認してください）\n"
+ "time": "2026-11-14 09:35",
+ "run": "https://github.com/yuuya051611/sns-autopost/actions/runs/43535210995"
 }
