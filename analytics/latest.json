@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-20 10:35",
+ "updated": "2026-11-21 10:00",
  "posts": [
   {
    "id": "18180763648424830",
@@ -9,16 +9,16 @@
    "is_reel": true,
    "headline": null,
    "type": "reel",
-   "reach": 25,
-   "views": 30,
+   "reach": 26,
+   "views": 31,
    "saved": 1,
    "shares": 0,
    "likes": 1,
    "comments": 0,
-   "avg_watch_sec": 9.9,
-   "save_rate": 0.04,
+   "avg_watch_sec": 9.7,
+   "save_rate": 0.0385,
    "share_rate": 0.0,
-   "eng_rate": 0.08
+   "eng_rate": 0.0769
   },
   {
    "id": "18029052881894594",
@@ -28,16 +28,16 @@
    "is_reel": true,
    "headline": null,
    "type": "reel",
-   "reach": 95,
-   "views": 107,
+   "reach": 96,
+   "views": 108,
    "saved": 1,
    "shares": 0,
    "likes": 3,
    "comments": 0,
    "avg_watch_sec": 5.9,
-   "save_rate": 0.0105,
+   "save_rate": 0.0104,
    "share_rate": 0.0,
-   "eng_rate": 0.0421
+   "eng_rate": 0.0417
   },
   {
    "id": "18224552533335752",
@@ -47,8 +47,8 @@
    "is_reel": false,
    "headline": null,
    "type": "image",
-   "reach": 32,
-   "views": 60,
+   "reach": 33,
+   "views": 61,
    "saved": 0,
    "shares": 0,
    "likes": 2,
@@ -56,23 +56,23 @@
    "avg_watch_sec": null,
    "save_rate": 0.0,
    "share_rate": 0.0,
-   "eng_rate": 0.0938
+   "eng_rate": 0.0909
   }
  ],
  "average": {
-  "reach": 50.6667,
-  "views": 65.6667,
+  "reach": 51.6667,
+  "views": 66.6667,
   "saved": 0.6667,
   "shares": 0.0,
-  "save_rate": 0.0168,
+  "save_rate": 0.0163,
   "share_rate": 0.0,
-  "eng_rate": 0.072,
-  "avg_watch_sec": 7.9
+  "eng_rate": 0.0698,
+  "avg_watch_sec": 7.8
  },
  "learnings": [
-  "一番保存・シェアされたのは「「星を上げれば順位が上がる」\n\n277店舗を数え」（保存率4.0%）。この型は続ける。",
+  "一番保存・シェアされたのは「「星を上げれば順位が上がる」\n\n277店舗を数え」（保存率3.9%）。この型は続ける。",
   "反応が弱かったのは「知らない間に、競合に負けてるかも。\n🍽️ 店舗・」（保存率0.0%）。つかみと中身を見直す。",
-  "平均リーチはリール60・画像32。リールの方が届いている。",
-  "リールの平均視聴時間は7.9秒。冒頭で離れている可能性が高いので、最初の1秒をもっと強く。"
+  "平均リーチはリール61・画像33。リールの方が届いている。",
+  "リールの平均視聴時間は7.8秒。冒頭で離れている可能性が高いので、最初の1秒をもっと強く。"
  ]
 }
